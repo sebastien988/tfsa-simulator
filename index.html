@@ -331,10 +331,29 @@ const UNIVERSE = [
   { t: "BN.TO",   n: "Brookfield Corp",      s: "Financial", c: "#1a1a3a", price: 82.00,  drift: 0.10, vol: 0.26, dy: 0.006 },
 ];
 const UMAP = Object.fromEntries(UNIVERSE.map(u => [u.t, u]));
-const DT = 1 / 252; // one trading/calendar day step
+const DT = 1 / 252;             // one trading/calendar day step
+const SQ_DT = Math.sqrt(DT);
+const E_ABS_Z = 0.7978845608;   // E|Z| for a standard normal (used to centre vol clustering)
+
+// Multi-factor model parameters. Each name's return = broad-market factor (scaled by
+// beta) + its sector factor + an idiosyncratic shock, so names co-move realistically.
+const SIGMA_M = 0.13;           // annualized broad-market volatility
+const SIGMA_S = 0.06;           // annualized sector-factor volatility
+const SECTOR_BETA = {
+  Tech: 1.30, Auto: 1.60, Retail: 1.00, Bank: 1.05, Energy: 1.15,
+  Telecom: 0.60, Industrial: 0.95, Utility: 0.45, ETF: 0.98, Financial: 1.20,
+};
+const SECTORS = Array.from(new Set(UNIVERSE.map(u => u.s)));
+// Decompose each name's total vol into systematic (market + sector) and idiosyncratic parts.
+for (const u of UNIVERSE) {
+  u.beta = SECTOR_BETA[u.s] != null ? SECTOR_BETA[u.s] : 1.0;
+  u.secLoad = u.s === "ETF" ? 0 : 1.0; // ETFs are diversified — no single-sector factor
+  const sysVar = Math.pow(u.beta * SIGMA_M, 2) + Math.pow(u.secLoad * SIGMA_S, 2);
+  u.idioVol = Math.sqrt(Math.max(0.0004, u.vol * u.vol - sysVar));
+}
 
 /* ---------------- State ---------------- */
-const LS_KEY = "tfsa_sim_v1";
+const LS_KEY = "tfsa_sim_v2";
 let S = null;
 
 function freshState() {
@@ -360,27 +379,80 @@ function load() {
 }
 function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {} }
 
-/* ---------------- Price engine (deterministic from seed) ---------------- */
-// Regenerate the full price path for a ticker from day 0..S.day using seeded GBM.
-const priceCache = {}; // ticker -> { day, path[] }  (cached, extended as day advances)
+/* ---------------- Price engine (deterministic multi-factor model) ----------------
+   Realism upgrades over plain independent GBM:
+   - Common broad-market factor (names move together, scaled by sector beta).
+   - Per-sector factor (e.g. the two banks co-move beyond the market).
+   - Idiosyncratic shock per name (stock-specific news).
+   - Rare fat-tailed JUMPS: market-wide (crashes/rallies, negatively skewed) and
+     per-name (earnings surprises), so drawdowns look real, not Gaussian.
+   - Volatility CLUSTERING: an EWMA multiplier makes calm and turbulent regimes
+     persist, the way real markets do.
+   Everything is seeded from S.seed, so a reload reproduces the identical path. */
+const priceCache = {};   // ticker -> { rng, path[], gen }
+let factorState = null;  // shared market/sector factor path
+
+function factors() {
+  if (!factorState) {
+    const f = {
+      mRng: mulberry32((S.seed ^ 0x9e3779b9) >>> 0),
+      sRng: {}, sComp: {},
+      mComp: [], volMult: [1], gen: 0,
+    };
+    for (const s of SECTORS) {
+      f.sRng[s] = mulberry32((S.seed ^ strHash("sec:" + s)) >>> 0);
+      f.sComp[s] = [];
+    }
+    factorState = f;
+  }
+  const f = factorState;
+  while (f.gen < S.day) {
+    const d = f.gen;
+    const zm = normal(f.mRng);
+    // market-wide jump ~ once a year, skewed toward crashes
+    let mj = 0, uj = f.mRng();
+    if (uj < 1 / 260) {
+      const sign = f.mRng() < 0.70 ? -1 : 1;
+      mj = sign * (0.035 + 0.06 * Math.abs(normal(f.mRng)));
+    }
+    f.mComp[d] = f.volMult[d] * SIGMA_M * SQ_DT * zm + mj;
+    for (const s of SECTORS) f.sComp[s][d] = SIGMA_S * SQ_DT * normal(f.sRng[s]);
+    // volatility clustering: EWMA of the standardized shock magnitude, centred on 1
+    let mag = Math.abs(zm) / E_ABS_Z;
+    if (mj) mag += Math.abs(mj) / (SIGMA_M * SQ_DT);
+    f.volMult[d + 1] = Math.max(0.70, Math.min(3.5, 0.92 * f.volMult[d] + 0.08 * mag));
+    f.gen++;
+  }
+  return f;
+}
 
 function pathFor(t) {
   const u = UMAP[t];
-  let cache = priceCache[t];
-  if (!cache) {
-    const rng = mulberry32((S.seed ^ strHash(t)) >>> 0);
-    cache = { rng, path: [u.price], gen: 0 };
-    priceCache[t] = cache;
+  let c = priceCache[t];
+  if (!c) {
+    c = { rng: mulberry32((S.seed ^ strHash(t) ^ 0x5bd1e995) >>> 0), path: [u.price], gen: 0 };
+    priceCache[t] = c;
   }
-  // extend deterministically to current day
-  while (cache.gen < S.day) {
-    const z = normal(cache.rng);
-    const prev = cache.path[cache.path.length - 1];
-    const next = prev * Math.exp((u.drift - 0.5 * u.vol * u.vol) * DT + u.vol * Math.sqrt(DT) * z);
-    cache.path.push(next);
-    cache.gen++;
+  const f = factors(); // ensure the shared factor path is extended to S.day
+  while (c.gen < S.day) {
+    const d = c.gen;
+    const zi = normal(c.rng);
+    // idiosyncratic jump ~ once a quarter (earnings-style surprise)
+    let ij = 0;
+    if (c.rng() < 1 / 63) {
+      const sign = c.rng() < 0.5 ? -1 : 1;
+      ij = sign * (0.03 + 0.05 * Math.abs(normal(c.rng)));
+    }
+    const r = (u.drift - 0.5 * u.vol * u.vol) * DT
+            + u.beta * f.mComp[d]
+            + u.secLoad * f.sComp[u.s][d]
+            + u.idioVol * SQ_DT * zi
+            + ij;
+    const prev = c.path[c.path.length - 1];
+    c.path.push(prev * Math.exp(r));
+    c.gen++;
   }
-  return cache.path;
+  return c.path;
 }
 function priceAt(t, day) {
   const p = pathFor(t);
@@ -417,14 +489,20 @@ function advance(days) {
     S.day++;
     const afterDate = simDate(S.day);
 
-    // Dividends: pay on quarter boundaries (approx every 91 days) for held, dividend-paying names.
-    for (const t in S.holdings) {
-      const u = UMAP[t];
-      if (u.dy > 0 && S.day % 91 === 0) {
-        const div = S.holdings[t].shares * price(t) * (u.dy / 4);
-        S.cash += div;
-        S.dividendsTotal += div;
+    // Dividends: paid quarterly on the 15th of Mar / Jun / Sep / Dec (realistic ex-div months).
+    const dm = afterDate.getMonth(), dd = afterDate.getDate();
+    if (dd === 15 && (dm === 2 || dm === 5 || dm === 8 || dm === 11)) {
+      let paid = 0;
+      for (const t in S.holdings) {
+        const u = UMAP[t];
+        if (u.dy > 0) {
+          const div = S.holdings[t].shares * price(t) * (u.dy / 4);
+          S.cash += div;
+          S.dividendsTotal += div;
+          paid += div;
+        }
       }
+      if (paid > 0.005) toast("💰 Dividends paid: " + CAD(paid));
     }
 
     // New calendar year -> restore contribution room from prior-year withdrawals.
@@ -473,12 +551,12 @@ function sell(t, shares) {
 }
 function fmtShares(x) { return (Math.round(x * 1e4) / 1e4).toLocaleString("en-CA", { maximumFractionDigits: 4 }); }
 
-/* ---------------- Cash: deposit / withdraw (TFSA room rules) ---------------- */
+/* ---------------- Cash: deposit / withdraw ---------------- */
+// Deposits are unlimited and fee-free in this sandbox. Contribution room is still
+// tracked for reference (it can go negative to show how far past the real TFSA limit
+// you'd be) but it never blocks a deposit and there is no penalty.
 function deposit(amount) {
   if (amount <= 0) return { ok: false, msg: "Enter a valid amount" };
-  if (amount > S.room + 1e-6) {
-    return { ok: false, over: true, msg: "Over-contribution blocked" };
-  }
   S.cash += amount;
   S.room -= amount;
   S.contributed += amount;
@@ -536,12 +614,15 @@ function render() {
   animateNumber(document.getElementById("room"), "room", S.room, CAD);
 
   const roomPct = Math.max(0, Math.min(100, (S.room / 10000) * 100));
-  document.getElementById("roomMeter").style.width = roomPct + "%";
+  const roomMeter = document.getElementById("roomMeter");
+  roomMeter.style.width = roomPct + "%";
+  roomMeter.style.background = S.room < 0 ? "var(--ink-faint)" : "var(--pink)";
   const yr = simDate(S.day).getFullYear();
   const pend = S.withdrawnByYear[yr] || 0;
-  document.getElementById("roomHint").textContent = pend > 0
-    ? "+" + CAD0(pend) + " restores Jan 1, " + (yr + 1)
-    : "Room used by deposits, not trades.";
+  document.getElementById("roomHint").textContent =
+    S.room < 0 ? CAD0(-S.room) + " past the real TFSA limit — no penalty in this sim."
+    : pend > 0 ? "+" + CAD0(pend) + " restores Jan 1, " + (yr + 1)
+    : "Deposits are unlimited & fee-free here.";
 
   // tax-free growth = current total value minus net contributions, plus anything withdrawn
   const withdrawnAll = Object.values(S.withdrawnByYear).reduce((a, b) => a + b, 0);
@@ -779,7 +860,7 @@ function openCash(kind) {
     '<div class="m-head">' +
       '<div class="avatar" style="background:' + (isDep ? "var(--pink)" : "var(--ink)") + '">' + (isDep ? "＋" : "↓") + '</div>' +
       '<div class="id"><div class="tkr">' + (isDep ? "Deposit cash" : "Withdraw cash") + '</div>' +
-        '<div class="co">' + (isDep ? "Uses contribution room" : "Restores room next Jan 1") + '</div></div>' +
+        '<div class="co">' + (isDep ? "Unlimited & fee-free" : "Restores room next Jan 1") + '</div></div>' +
     '</div>' +
     '<div class="field"><label>Amount (CAD)</label>' +
       '<div class="inputwrap"><span class="pre">$</span><input id="camt" type="number" min="0" step="100" placeholder="0" inputmode="decimal"></div></div>' +
@@ -799,16 +880,14 @@ function openCash(kind) {
       const roomAfter = S.room - v;
       summ.innerHTML =
         '<div class="l"><span>Cash after</span><b>' + CAD(S.cash + v) + '</b></div>' +
-        '<div class="l"><span>Room remaining</span><b>' + CAD(Math.max(0, roomAfter)) + '</b></div>';
+        '<div class="l"><span>Fee</span><b>$0.00</b></div>' +
+        '<div class="l"><span>Contribution room after</span><b>' + CAD(roomAfter) + '</b></div>';
       if (v > S.room + 1e-6) {
-        const excess = v - S.room;
-        const penalty = excess * 0.01;
         warn.classList.add("show");
-        warn.innerHTML = '⚠️ <b>Over-contribution blocked.</b> This exceeds your room by ' + CAD(excess) +
-          '. The CRA charges <b>1% per month</b> on the excess — that would be about ' + CAD(penalty) +
-          '/month (' + CAD(penalty * 12) + '/yr). Deposit blocked to keep you safe.';
-        conf.disabled = true;
-      } else { warn.classList.remove("show"); conf.disabled = v <= 0; }
+        warn.innerHTML = 'ℹ️ In real life this would exceed your TFSA room (a 1%/month CRA penalty on the excess). ' +
+          'Here deposits are <b>unlimited and fee-free</b> — go ahead.';
+      } else { warn.classList.remove("show"); }
+      conf.disabled = v <= 0;
     } else {
       const yr = simDate(S.day).getFullYear();
       summ.innerHTML =
@@ -855,6 +934,7 @@ document.getElementById("resetLink").addEventListener("click", () => {
   if (confirm("Reset the simulation? All progress will be cleared.")) {
     localStorage.removeItem(LS_KEY);
     for (const k in priceCache) delete priceCache[k];
+    factorState = null;
     displayed = {};
     S = freshState();
     save(); render();
