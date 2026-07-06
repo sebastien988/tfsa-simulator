@@ -29,7 +29,22 @@
     -webkit-font-smoothing: antialiased;
     line-height: 1.4;
   }
-  .wrap { max-width: 780px; margin: 0 auto; padding: 24px 18px 96px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 34px 34px 110px; }
+
+  /* Desktop dashboard grid */
+  .dash { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 26px; align-items: start; }
+  .side { display: flex; flex-direction: column; gap: 16px; }
+  .side .stat { width: 100%; }
+  .lists { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; margin-top: 4px; }
+  .lists .col { min-width: 0; }
+  .lists .sec-head { margin-top: 8px; }
+
+  @media (max-width: 900px) {
+    .wrap { padding: 24px 18px 100px; }
+    .dash, .lists { grid-template-columns: 1fr; }
+    .hero .total { font-size: 52px; }
+    svg.chart { height: 220px; }
+  }
 
   /* Header */
   .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
@@ -37,10 +52,11 @@
   .brand .dot { width: 26px; height: 26px; border-radius: 8px; background: var(--pink); display: grid; place-items: center; color: #fff; font-size: 15px; font-weight: 800; }
   .cal { font-size: 13px; color: var(--ink-soft); background: var(--card); padding: 7px 12px; border-radius: 999px; box-shadow: var(--shadow); font-variant-numeric: tabular-nums; }
 
-  /* Hero */
+  /* Left dashboard card: hero + chart */
+  .main-card { padding: 26px 28px 22px; }
   .hero { margin-bottom: 6px; }
   .hero .label { font-size: 13px; color: var(--ink-soft); font-weight: 500; margin-bottom: 6px; }
-  .hero .total { font-size: 56px; font-weight: 700; letter-spacing: -.03em; line-height: 1.02; font-variant-numeric: tabular-nums; }
+  .hero .total { font-size: 64px; font-weight: 700; letter-spacing: -.03em; line-height: 1.02; font-variant-numeric: tabular-nums; }
   .hero .change { margin-top: 10px; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
   .change .arrow { font-size: 12px; }
   .pos { color: var(--green); }
@@ -48,9 +64,9 @@
   .change .sub { color: var(--ink-faint); font-weight: 500; }
 
   /* Chart */
-  .chart-card { margin-top: 20px; }
+  .chart-card { margin-top: 22px; }
   .chart-wrap { position: relative; }
-  svg.chart { width: 100%; height: 200px; display: block; overflow: visible; }
+  svg.chart { width: 100%; height: 280px; display: block; overflow: visible; }
   .chart-line { fill: none; stroke: var(--pink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   .chart-line.down { stroke: var(--red); }
   .tf-row { display: flex; gap: 6px; margin-top: 14px; }
@@ -166,15 +182,17 @@
     <div class="cal" id="cal">—</div>
   </div>
 
-  <div class="hero">
-    <div class="label">Total account value</div>
-    <div class="total" id="total">$0</div>
-    <div class="change" id="change"></div>
-  </div>
+  <div class="dash">
+   <div class="main-card card">
+    <div class="hero">
+      <div class="label">Total account value</div>
+      <div class="total" id="total">$0</div>
+      <div class="change" id="change"></div>
+    </div>
 
-  <div class="chart-card">
+    <div class="chart-card">
     <div class="chart-wrap">
-      <svg class="chart" id="chart" viewBox="0 0 700 200" preserveAspectRatio="none">
+      <svg class="chart" id="chart" viewBox="0 0 700 280" preserveAspectRatio="none">
         <defs>
           <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="var(--pink)" stop-opacity="0.18"/>
@@ -197,9 +215,10 @@
       <div class="tf active" data-tf="1Y">1Y</div>
       <div class="tf" data-tf="ALL">ALL</div>
     </div>
-  </div>
+    </div>
+   </div><!-- /main-card -->
 
-  <div class="stat-row">
+   <div class="side">
     <div class="stat">
       <div class="k">💵 Cash available</div>
       <div class="v" id="cash">$0</div>
@@ -214,9 +233,6 @@
       <div class="meter"><span id="roomMeter"></span></div>
       <div class="hint" id="roomHint"></div>
     </div>
-  </div>
-
-  <div class="stat-row" style="grid-template-columns:1fr 1fr;">
     <div class="stat tax">
       <div class="k">✨ Tax-free growth</div>
       <div class="v" id="taxfree">$0</div>
@@ -227,13 +243,19 @@
       <div class="v" id="totret">$0</div>
       <div class="hint" id="totretHint">Includes dividends received.</div>
     </div>
+   </div><!-- /side -->
+  </div><!-- /dash -->
+
+  <div class="lists">
+    <div class="col">
+      <div class="sec-head"><h2>Your holdings</h2><span class="aside" id="holdAside"></span></div>
+      <div class="rows" id="holdings"></div>
+    </div>
+    <div class="col">
+      <div class="sec-head"><h2>Market</h2><span class="aside">Tap to trade</span></div>
+      <div class="rows" id="market"></div>
+    </div>
   </div>
-
-  <div class="sec-head"><h2>Your holdings</h2><span class="aside" id="holdAside"></span></div>
-  <div class="rows" id="holdings"></div>
-
-  <div class="sec-head"><h2>Market</h2><span class="aside">Tap to trade</span></div>
-  <div class="rows" id="market"></div>
 
   <div class="footnote">
     Simulated data only — no real money, no live feeds. Prices follow seeded geometric
@@ -620,7 +642,7 @@ function renderChart() {
   const span = spans[currentTF];
   if (data.length > span) data = data.slice(data.length - span);
 
-  const W = 700, H = 200, pad = 6;
+  const W = 700, H = 280, pad = 8;
   let min = Math.min(...data), max = Math.max(...data);
   if (min === max) { min -= 1; max += 1; }
   const rng = max - min;
