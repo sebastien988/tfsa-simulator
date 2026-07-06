@@ -1,0 +1,859 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TFSA Simulator</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --card: #ffffff;
+    --ink: #1a1a1a;
+    --ink-soft: #6b6b70;
+    --ink-faint: #9a9aa0;
+    --pink: #ff4d6d;
+    --pink-soft: #ffe3e9;
+    --pink-ink: #d81b4a;
+    --green: #12a67a;
+    --green-soft: #e3f6ef;
+    --red: #d9776b;
+    --red-soft: #fbe9e6;
+    --line: #ececec;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(20,20,30,.04), 0 8px 24px rgba(20,20,30,.06);
+    --shadow-hover: 0 2px 4px rgba(20,20,30,.06), 0 16px 40px rgba(20,20,30,.10);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.4;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 24px 18px 96px; }
+
+  /* Header */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+  .brand .dot { width: 26px; height: 26px; border-radius: 8px; background: var(--pink); display: grid; place-items: center; color: #fff; font-size: 15px; font-weight: 800; }
+  .cal { font-size: 13px; color: var(--ink-soft); background: var(--card); padding: 7px 12px; border-radius: 999px; box-shadow: var(--shadow); font-variant-numeric: tabular-nums; }
+
+  /* Hero */
+  .hero { margin-bottom: 6px; }
+  .hero .label { font-size: 13px; color: var(--ink-soft); font-weight: 500; margin-bottom: 6px; }
+  .hero .total { font-size: 56px; font-weight: 700; letter-spacing: -.03em; line-height: 1.02; font-variant-numeric: tabular-nums; }
+  .hero .change { margin-top: 10px; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+  .change .arrow { font-size: 12px; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .change .sub { color: var(--ink-faint); font-weight: 500; }
+
+  /* Chart */
+  .chart-card { margin-top: 20px; }
+  .chart-wrap { position: relative; }
+  svg.chart { width: 100%; height: 200px; display: block; overflow: visible; }
+  .chart-line { fill: none; stroke: var(--pink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .chart-line.down { stroke: var(--red); }
+  .tf-row { display: flex; gap: 6px; margin-top: 14px; }
+  .tf { flex: 1; text-align: center; font-size: 13px; font-weight: 600; color: var(--ink-soft); padding: 8px 0; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s; user-select: none; }
+  .tf.active { background: var(--ink); color: #fff; }
+  .tf:not(.active):hover { background: #f0f0ee; }
+  .chart-tip { position: absolute; top: 8px; left: 0; font-size: 12px; color: var(--ink-faint); font-variant-numeric: tabular-nums; pointer-events: none; }
+
+  /* Cards */
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+  .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+  .stat { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; }
+  .stat .k { font-size: 12.5px; color: var(--ink-soft); font-weight: 500; margin-bottom: 6px; display:flex; align-items:center; gap:6px;}
+  .stat .v { font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .stat.tax .v { color: var(--pink); }
+  .stat .meter { height: 6px; border-radius: 999px; background: #f0f0ee; margin-top: 10px; overflow: hidden; }
+  .stat .meter > span { display: block; height: 100%; background: var(--pink); border-radius: 999px; transition: width .4s ease; }
+  .hint { font-size: 11.5px; color: var(--ink-faint); margin-top: 8px; }
+
+  /* Section headers */
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin: 30px 4px 12px; }
+  .sec-head h2 { font-size: 16px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+  .sec-head .aside { font-size: 12.5px; color: var(--ink-faint); }
+
+  /* Rows */
+  .rows { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 14px; padding: 14px 18px; cursor: pointer; transition: background .12s; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row:hover { background: #fafafa; }
+  .avatar { width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 16px; letter-spacing: -.02em; }
+  .row .id { flex: 1; min-width: 0; }
+  .row .tkr { font-weight: 700; font-size: 14.5px; letter-spacing: -.01em; }
+  .row .co { font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .co .sh { color: var(--ink-faint); }
+  .row .num { text-align: right; flex: 0 0 auto; }
+  .row .val { font-weight: 700; font-size: 14.5px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .row .px { font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .pill.pos { background: var(--green-soft); color: var(--green); }
+  .pill.neg { background: var(--red-soft); color: var(--red); }
+  .empty { padding: 26px 18px; text-align: center; color: var(--ink-faint); font-size: 13.5px; }
+
+  /* Buttons */
+  .btn { border: none; cursor: pointer; font-family: inherit; font-weight: 600; border-radius: 999px; padding: 12px 22px; font-size: 14.5px; transition: transform .08s, box-shadow .15s, background .15s; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--pink); color: #fff; }
+  .btn-primary:hover { background: #ff3a5e; }
+  .btn-ghost { background: transparent; color: var(--ink); border: 1.5px solid #e2e2df; }
+  .btn-ghost:hover { border-color: #cfcfcb; background:#fafafa; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-sm { padding: 8px 16px; font-size: 13px; }
+
+  /* Advance time bar */
+  .timebar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; background: var(--ink); color: #fff; border-radius: 999px; padding: 8px 8px 8px 18px; display: flex; align-items: center; gap: 6px; box-shadow: 0 10px 30px rgba(20,20,30,.28); z-index: 40; }
+  .timebar .lbl { font-size: 12.5px; font-weight: 600; opacity: .8; margin-right: 6px; }
+  .timebar button { background: rgba(255,255,255,.14); color: #fff; border: none; border-radius: 999px; padding: 9px 15px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .12s; }
+  .timebar button:hover { background: rgba(255,255,255,.26); }
+  .timebar button.play { background: var(--pink); }
+  .timebar button.play:hover { background: #ff3a5e; }
+  .timebar button.play.on { background: var(--pink); }
+
+  /* Modal */
+  .scrim { position: fixed; inset: 0; background: rgba(20,20,30,.42); backdrop-filter: blur(2px); display: none; align-items: flex-end; justify-content: center; z-index: 60; }
+  .scrim.open { display: flex; }
+  .modal { background: var(--card); width: 100%; max-width: 440px; border-radius: 22px 22px 0 0; padding: 22px 22px 26px; box-shadow: 0 -8px 40px rgba(0,0,0,.2); animation: slideUp .22s ease; }
+  @media (min-width: 520px) { .scrim { align-items: center; } .modal { border-radius: 22px; } }
+  @keyframes slideUp { from { transform: translateY(24px); opacity: .6; } to { transform: translateY(0); opacity: 1; } }
+  .modal .m-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .modal .m-head .id { flex: 1; }
+  .modal .m-head .tkr { font-weight: 700; font-size: 17px; }
+  .modal .m-head .co { font-size: 13px; color: var(--ink-soft); }
+  .modal .m-px { text-align: right; }
+  .modal .m-px .p { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .seg { display: flex; background: #f0f0ee; border-radius: 999px; padding: 4px; margin-bottom: 18px; }
+  .seg button { flex: 1; border: none; background: transparent; padding: 9px; border-radius: 999px; font-family: inherit; font-weight: 700; font-size: 14px; color: var(--ink-soft); cursor: pointer; }
+  .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .seg button.on.sell { color: var(--pink-ink); }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; margin-bottom: 7px; }
+  .field .inputwrap { display: flex; align-items: center; background: #f7f7f5; border: 1.5px solid #ececea; border-radius: 14px; padding: 0 14px; transition: border-color .15s; }
+  .field .inputwrap:focus-within { border-color: var(--pink); }
+  .field .inputwrap .pre { color: var(--ink-faint); font-weight: 600; }
+  .field input { flex: 1; border: none; background: transparent; padding: 14px 8px; font-size: 18px; font-weight: 600; font-family: inherit; outline: none; color: var(--ink); font-variant-numeric: tabular-nums; width: 100%; }
+  .modetoggle { display:flex; gap:8px; margin-bottom:14px; }
+  .modetoggle button { flex:1; background:#f7f7f5; border:1.5px solid #ececea; border-radius:12px; padding:9px; font-family:inherit; font-weight:600; font-size:12.5px; color:var(--ink-soft); cursor:pointer;}
+  .modetoggle button.on { border-color: var(--pink); color: var(--pink-ink); background: var(--pink-soft); }
+  .summ { background: #faf9f7; border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; font-size: 13px; }
+  .summ .l { display: flex; justify-content: space-between; padding: 3px 0; color: var(--ink-soft); }
+  .summ .l b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .warn { background: #fff6e6; border: 1px solid #ffe1a8; color: #a2670a; border-radius: 12px; padding: 12px 14px; font-size: 12.5px; margin-bottom: 14px; display: none; }
+  .warn.show { display: block; }
+  .warn b { color: #8a5600; }
+  .m-actions { display: flex; gap: 10px; }
+  .m-actions .btn { flex: 1; }
+  .quicks { display:flex; gap:8px; margin-bottom:14px; }
+  .quicks button { flex:1; background:#f0f0ee; border:none; border-radius:10px; padding:8px; font-family:inherit; font-size:12px; font-weight:600; color:var(--ink-soft); cursor:pointer; }
+  .quicks button:hover { background:#e7e7e4; }
+
+  .cashbtns { display:flex; gap:10px; margin-top:18px; }
+  .cashbtns .btn { flex:1; }
+
+  .toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%) translateY(20px); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 13.5px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.3); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 80; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: #b8323f; }
+
+  .footnote { text-align:center; font-size:11.5px; color:var(--ink-faint); margin-top:34px; line-height:1.6; }
+  a.reset { color: var(--ink-faint); text-decoration: underline; cursor: pointer; }
+</style>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><span class="dot">T</span> TFSA Simulator</div>
+    <div class="cal" id="cal">—</div>
+  </div>
+
+  <div class="hero">
+    <div class="label">Total account value</div>
+    <div class="total" id="total">$0</div>
+    <div class="change" id="change"></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-wrap">
+      <svg class="chart" id="chart" viewBox="0 0 700 200" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--pink)" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="var(--pink)" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="fillGradDown" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--red)" stop-opacity="0.16"/>
+            <stop offset="100%" stop-color="var(--red)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path class="chart-fill" id="chartFill" d=""></path>
+        <path class="chart-line" id="chartLine" d=""></path>
+      </svg>
+      <div class="chart-tip" id="chartTip"></div>
+    </div>
+    <div class="tf-row" id="tfRow">
+      <div class="tf" data-tf="1D">1D</div>
+      <div class="tf" data-tf="1W">1W</div>
+      <div class="tf" data-tf="1M">1M</div>
+      <div class="tf active" data-tf="1Y">1Y</div>
+      <div class="tf" data-tf="ALL">ALL</div>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat">
+      <div class="k">💵 Cash available</div>
+      <div class="v" id="cash">$0</div>
+      <div class="cashbtns">
+        <button class="btn btn-ghost btn-sm" id="depositBtn">Deposit</button>
+        <button class="btn btn-ghost btn-sm" id="withdrawBtn">Withdraw</button>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="k">🏦 Contribution room</div>
+      <div class="v" id="room">$0</div>
+      <div class="meter"><span id="roomMeter"></span></div>
+      <div class="hint" id="roomHint"></div>
+    </div>
+  </div>
+
+  <div class="stat-row" style="grid-template-columns:1fr 1fr;">
+    <div class="stat tax">
+      <div class="k">✨ Tax-free growth</div>
+      <div class="v" id="taxfree">$0</div>
+      <div class="hint">Gains + dividends earned inside the account, all tax-free.</div>
+    </div>
+    <div class="stat">
+      <div class="k">📈 Total return</div>
+      <div class="v" id="totret">$0</div>
+      <div class="hint" id="totretHint">Includes dividends received.</div>
+    </div>
+  </div>
+
+  <div class="sec-head"><h2>Your holdings</h2><span class="aside" id="holdAside"></span></div>
+  <div class="rows" id="holdings"></div>
+
+  <div class="sec-head"><h2>Market</h2><span class="aside">Tap to trade</span></div>
+  <div class="rows" id="market"></div>
+
+  <div class="footnote">
+    Simulated data only — no real money, no live feeds. Prices follow seeded geometric
+    Brownian motion from a stated start date. Educational tool.<br>
+    <a class="reset" id="resetLink">Reset simulation</a>
+  </div>
+</div>
+
+<!-- Advance time -->
+<div class="timebar">
+  <span class="lbl">Advance</span>
+  <button data-adv="1">1 Day</button>
+  <button data-adv="7">1 Week</button>
+  <button data-adv="30">1 Month</button>
+  <button class="play" id="playBtn" title="Auto-advance">▶</button>
+</div>
+
+<!-- Trade modal -->
+<div class="scrim" id="scrim">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ---------------- Seeded RNG ---------------- */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function strHash(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+// standard normal via Box-Muller from a uniform generator
+function normal(rng) {
+  let u = 0, v = 0;
+  while (u === 0) u = rng();
+  while (v === 0) v = rng();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+/* ---------------- Universe ---------------- */
+// price = approximate real-world close near the sim start date (Jan 1, 2025).
+// drift = annualized expected return, vol = annualized volatility, dy = annual dividend yield.
+const SIM_START = "2025-01-01";
+const UNIVERSE = [
+  { t: "SHOP.TO", n: "Shopify",              s: "Tech",      c: "#5b8a3c", price: 150.00, drift: 0.16, vol: 0.42, dy: 0.00 },
+  { t: "AAPL",    n: "Apple",                s: "Tech",      c: "#111111", price: 243.00, drift: 0.13, vol: 0.28, dy: 0.005 },
+  { t: "MSFT",    n: "Microsoft",            s: "Tech",      c: "#2f7dd1", price: 421.00, drift: 0.13, vol: 0.26, dy: 0.008 },
+  { t: "NVDA",    n: "NVIDIA",               s: "Tech",      c: "#76b900", price: 134.00, drift: 0.22, vol: 0.52, dy: 0.002 },
+  { t: "TSLA",    n: "Tesla",                s: "Auto",      c: "#cc2b2b", price: 403.00, drift: 0.14, vol: 0.60, dy: 0.00 },
+  { t: "GOOGL",   n: "Alphabet",             s: "Tech",      c: "#e0691a", price: 190.00, drift: 0.12, vol: 0.29, dy: 0.004 },
+  { t: "AMZN",    n: "Amazon",               s: "Retail",    c: "#e0891a", price: 219.00, drift: 0.13, vol: 0.32, dy: 0.00 },
+  { t: "RY.TO",   n: "Royal Bank of Canada", s: "Bank",      c: "#0a4f8f", price: 172.00, drift: 0.07, vol: 0.16, dy: 0.035 },
+  { t: "TD.TO",   n: "TD Bank",              s: "Bank",      c: "#0b8a3a", price: 77.00,  drift: 0.06, vol: 0.18, dy: 0.048 },
+  { t: "ENB.TO",  n: "Enbridge",             s: "Energy",    c: "#c99a12", price: 61.00,  drift: 0.05, vol: 0.15, dy: 0.062 },
+  { t: "CNQ.TO",  n: "Canadian Natural Res", s: "Energy",    c: "#8a4b12", price: 47.00,  drift: 0.07, vol: 0.28, dy: 0.048 },
+  { t: "BCE.TO",  n: "BCE Inc",              s: "Telecom",   c: "#1c4b9c", price: 33.00,  drift: 0.03, vol: 0.17, dy: 0.088 },
+  { t: "T.TO",    n: "Telus",                s: "Telecom",   c: "#3a2f6d", price: 20.00,  drift: 0.04, vol: 0.16, dy: 0.075 },
+  { t: "CNR.TO",  n: "Canadian National Rly",s: "Industrial",c: "#5a3a1a", price: 145.00, drift: 0.06, vol: 0.18, dy: 0.022 },
+  { t: "FTS.TO",  n: "Fortis (Utility)",     s: "Utility",   c: "#2f6d4b", price: 60.00,  drift: 0.04, vol: 0.12, dy: 0.042 },
+  { t: "XIU.TO",  n: "iShares TSX 60 ETF",   s: "ETF",       c: "#111a3a", price: 37.50,  drift: 0.07, vol: 0.14, dy: 0.028 },
+  { t: "VFV.TO",  n: "Vanguard S&P 500 ETF", s: "ETF",       c: "#7a1f2b", price: 140.00, drift: 0.09, vol: 0.17, dy: 0.012 },
+  { t: "COST",    n: "Costco",               s: "Retail",    c: "#0a5fbf", price: 916.00, drift: 0.11, vol: 0.24, dy: 0.005 },
+  { t: "BN.TO",   n: "Brookfield Corp",      s: "Financial", c: "#1a1a3a", price: 82.00,  drift: 0.10, vol: 0.26, dy: 0.006 },
+];
+const UMAP = Object.fromEntries(UNIVERSE.map(u => [u.t, u]));
+const DT = 1 / 252; // one trading/calendar day step
+
+/* ---------------- State ---------------- */
+const LS_KEY = "tfsa_sim_v1";
+let S = null;
+
+function freshState() {
+  return {
+    seed: (Math.random() * 1e9) | 0,
+    day: 0,                     // days elapsed since SIM_START
+    cash: 10000,
+    room: 10000,
+    holdings: {},              // ticker -> { shares, costBasis }
+    dividendsTotal: 0,
+    contributed: 10000,        // total contributions made (starting deposit counts)
+    withdrawnByYear: {},       // calendarYear -> amount withdrawn that year (pending room restore)
+    valueHistory: [],          // total account value per day
+  };
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) { S = JSON.parse(raw); return; }
+  } catch (e) {}
+  S = freshState();
+}
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* ---------------- Price engine (deterministic from seed) ---------------- */
+// Regenerate the full price path for a ticker from day 0..S.day using seeded GBM.
+const priceCache = {}; // ticker -> { day, path[] }  (cached, extended as day advances)
+
+function pathFor(t) {
+  const u = UMAP[t];
+  let cache = priceCache[t];
+  if (!cache) {
+    const rng = mulberry32((S.seed ^ strHash(t)) >>> 0);
+    cache = { rng, path: [u.price], gen: 0 };
+    priceCache[t] = cache;
+  }
+  // extend deterministically to current day
+  while (cache.gen < S.day) {
+    const z = normal(cache.rng);
+    const prev = cache.path[cache.path.length - 1];
+    const next = prev * Math.exp((u.drift - 0.5 * u.vol * u.vol) * DT + u.vol * Math.sqrt(DT) * z);
+    cache.path.push(next);
+    cache.gen++;
+  }
+  return cache.path;
+}
+function priceAt(t, day) {
+  const p = pathFor(t);
+  const d = Math.max(0, Math.min(day, p.length - 1));
+  return p[d];
+}
+function price(t) { return priceAt(t, S.day); }
+function prevPrice(t) { return priceAt(t, Math.max(0, S.day - 1)); }
+
+/* ---------------- Calendar ---------------- */
+function simDate(day) {
+  const d = new Date(SIM_START + "T00:00:00");
+  d.setDate(d.getDate() + day);
+  return d;
+}
+function fmtDate(d) {
+  return d.toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
+}
+
+/* ---------------- Money helpers ---------------- */
+const CAD = n => (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const CAD0 = n => (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-CA", { maximumFractionDigits: 0 });
+function holdingsValue(day) {
+  let v = 0;
+  for (const t in S.holdings) v += S.holdings[t].shares * priceAt(t, day == null ? S.day : day);
+  return v;
+}
+function totalValue(day) { return S.cash + holdingsValue(day); }
+
+/* ---------------- Time advance ---------------- */
+function advance(days) {
+  for (let i = 0; i < days; i++) {
+    const beforeDate = simDate(S.day);
+    S.day++;
+    const afterDate = simDate(S.day);
+
+    // Dividends: pay on quarter boundaries (approx every 91 days) for held, dividend-paying names.
+    for (const t in S.holdings) {
+      const u = UMAP[t];
+      if (u.dy > 0 && S.day % 91 === 0) {
+        const div = S.holdings[t].shares * price(t) * (u.dy / 4);
+        S.cash += div;
+        S.dividendsTotal += div;
+      }
+    }
+
+    // New calendar year -> restore contribution room from prior-year withdrawals.
+    if (afterDate.getFullYear() !== beforeDate.getFullYear()) {
+      const endedYear = beforeDate.getFullYear();
+      const restore = S.withdrawnByYear[endedYear] || 0;
+      if (restore > 0) {
+        S.room += restore;
+        delete S.withdrawnByYear[endedYear];
+        toast("🎉 Jan 1 " + afterDate.getFullYear() + ": " + CAD0(restore) + " of withdrawal room restored");
+      }
+    }
+
+    S.valueHistory.push(round2(totalValue()));
+  }
+  save();
+  render();
+}
+function round2(n) { return Math.round(n * 100) / 100; }
+
+/* ---------------- Trading ---------------- */
+function buy(t, shares) {
+  const cost = shares * price(t);
+  if (shares <= 0) return { ok: false, msg: "Enter a valid amount" };
+  if (cost > S.cash + 1e-6) return { ok: false, msg: "Not enough cash" };
+  S.cash -= cost;
+  const h = S.holdings[t] || { shares: 0, costBasis: 0 };
+  h.costBasis += cost;
+  h.shares += shares;
+  S.holdings[t] = h;
+  save();
+  return { ok: true, msg: "Bought " + fmtShares(shares) + " " + t };
+}
+function sell(t, shares) {
+  const h = S.holdings[t];
+  if (!h || shares <= 0) return { ok: false, msg: "Nothing to sell" };
+  if (shares > h.shares + 1e-9) return { ok: false, msg: "You only own " + fmtShares(h.shares) + " shares" };
+  const proceeds = shares * price(t);
+  const frac = shares / h.shares;
+  h.costBasis -= h.costBasis * frac;
+  h.shares -= shares;
+  S.cash += proceeds;
+  if (h.shares <= 1e-9) delete S.holdings[t];
+  save();
+  return { ok: true, msg: "Sold " + fmtShares(shares) + " " + t + " for " + CAD(proceeds) };
+}
+function fmtShares(x) { return (Math.round(x * 1e4) / 1e4).toLocaleString("en-CA", { maximumFractionDigits: 4 }); }
+
+/* ---------------- Cash: deposit / withdraw (TFSA room rules) ---------------- */
+function deposit(amount) {
+  if (amount <= 0) return { ok: false, msg: "Enter a valid amount" };
+  if (amount > S.room + 1e-6) {
+    return { ok: false, over: true, msg: "Over-contribution blocked" };
+  }
+  S.cash += amount;
+  S.room -= amount;
+  S.contributed += amount;
+  save();
+  return { ok: true, msg: "Deposited " + CAD(amount) };
+}
+function withdraw(amount) {
+  if (amount <= 0) return { ok: false, msg: "Enter a valid amount" };
+  if (amount > S.cash + 1e-6) return { ok: false, msg: "Not enough cash to withdraw" };
+  S.cash -= amount;
+  const yr = simDate(S.day).getFullYear();
+  S.withdrawnByYear[yr] = (S.withdrawnByYear[yr] || 0) + amount;
+  save();
+  return { ok: true, msg: "Withdrew " + CAD(amount) + " — room restored next Jan 1" };
+}
+
+/* ---------------- Rendering ---------------- */
+let displayed = {}; // for count-up animation
+
+function animateNumber(el, key, target, formatter) {
+  const from = displayed[key] == null ? target : displayed[key];
+  const start = performance.now();
+  const dur = 500;
+  function step(now) {
+    const p = Math.min(1, (now - start) / dur);
+    const e = 1 - Math.pow(1 - p, 3);
+    const cur = from + (target - from) * e;
+    el.textContent = formatter(cur);
+    if (p < 1) requestAnimationFrame(step);
+    else displayed[key] = target;
+  }
+  displayed[key] = target;
+  requestAnimationFrame(step);
+}
+
+function render() {
+  const tv = totalValue();
+  const prevTv = totalValue(Math.max(0, S.day - 1));
+  const dayCh = tv - prevTv;
+  const dayPct = prevTv ? (dayCh / prevTv) * 100 : 0;
+
+  animateNumber(document.getElementById("total"), "total", tv, CAD);
+  const chEl = document.getElementById("change");
+  const up = dayCh >= 0;
+  chEl.className = "change " + (up ? "pos" : "neg");
+  chEl.innerHTML =
+    '<span class="arrow">' + (up ? "▲" : "▼") + '</span>' +
+    (up ? "+" : "-") + CAD(Math.abs(dayCh)).replace("-", "") +
+    " (" + (up ? "+" : "") + dayPct.toFixed(2) + "%)" +
+    ' <span class="sub">today</span>';
+
+  document.getElementById("cal").textContent = "📅 " + fmtDate(simDate(S.day));
+
+  animateNumber(document.getElementById("cash"), "cash", S.cash, CAD);
+  animateNumber(document.getElementById("room"), "room", S.room, CAD);
+
+  const roomPct = Math.max(0, Math.min(100, (S.room / 10000) * 100));
+  document.getElementById("roomMeter").style.width = roomPct + "%";
+  const yr = simDate(S.day).getFullYear();
+  const pend = S.withdrawnByYear[yr] || 0;
+  document.getElementById("roomHint").textContent = pend > 0
+    ? "+" + CAD0(pend) + " restores Jan 1, " + (yr + 1)
+    : "Room used by deposits, not trades.";
+
+  // tax-free growth = current total value minus net contributions, plus anything withdrawn
+  const withdrawnAll = Object.values(S.withdrawnByYear).reduce((a, b) => a + b, 0);
+  const growth = (tv + withdrawnAll) - S.contributed;
+  animateNumber(document.getElementById("taxfree"), "taxfree", Math.max(0, growth), CAD);
+  const tfEl = document.getElementById("taxfree");
+  tfEl.style.color = growth >= 0 ? "var(--pink)" : "var(--red)";
+
+  animateNumber(document.getElementById("totret"), "totret", growth, v => (v >= 0 ? "+" : "") + CAD(v));
+  document.getElementById("totret").style.color = growth >= 0 ? "var(--green)" : "var(--red)";
+  document.getElementById("totretHint").textContent =
+    "Incl. " + CAD0(S.dividendsTotal) + " dividends received.";
+
+  renderHoldings();
+  renderMarket();
+  renderChart();
+  save();
+}
+
+function avatarEl(u) {
+  return '<div class="avatar" style="background:' + u.c + '">' + u.t.replace(".TO", "").charAt(0) + '</div>';
+}
+
+function renderHoldings() {
+  const box = document.getElementById("holdings");
+  const tickers = Object.keys(S.holdings);
+  const aside = document.getElementById("holdAside");
+  if (tickers.length === 0) {
+    box.innerHTML = '<div class="empty">No holdings yet — buy something from the market below.</div>';
+    aside.textContent = "";
+    return;
+  }
+  tickers.sort((a, b) => S.holdings[b].shares * price(b) - S.holdings[a].shares * price(a));
+  let totalVal = 0;
+  let html = "";
+  for (const t of tickers) {
+    const u = UMAP[t], h = S.holdings[t];
+    const px = price(t), pv = prevPrice(t);
+    const val = h.shares * px;
+    totalVal += val;
+    const chPct = pv ? ((px - pv) / pv) * 100 : 0;
+    const up = chPct >= 0;
+    html +=
+      '<div class="row" data-t="' + t + '">' +
+        avatarEl(u) +
+        '<div class="id"><div class="tkr">' + t + '</div>' +
+          '<div class="co">' + u.n + ' <span class="sh">· ' + fmtShares(h.shares) + ' sh</span></div></div>' +
+        '<div class="num"><div class="val">' + CAD(val) + '</div>' +
+          '<div class="px">' + CAD(px) + '</div>' +
+          '<span class="pill ' + (up ? "pos" : "neg") + '">' + (up ? "+" : "") + chPct.toFixed(2) + '%</span></div>' +
+      '</div>';
+  }
+  box.innerHTML = html;
+  aside.textContent = CAD(totalVal) + " invested";
+  bindRows(box);
+}
+
+function renderMarket() {
+  const box = document.getElementById("market");
+  const owned = new Set(Object.keys(S.holdings));
+  let html = "";
+  for (const u of UNIVERSE) {
+    if (owned.has(u.t)) continue;
+    const px = price(u.t), pv = prevPrice(u.t);
+    const chPct = pv ? ((px - pv) / pv) * 100 : 0;
+    const up = chPct >= 0;
+    html +=
+      '<div class="row" data-t="' + u.t + '">' +
+        avatarEl(u) +
+        '<div class="id"><div class="tkr">' + u.t + '</div>' +
+          '<div class="co">' + u.n + ' <span class="sh">· ' + u.s +
+            (u.dy > 0 ? ' · ' + (u.dy * 100).toFixed(1) + '% yield' : '') + '</span></div></div>' +
+        '<div class="num"><div class="val">' + CAD(px) + '</div>' +
+          '<span class="pill ' + (up ? "pos" : "neg") + '">' + (up ? "+" : "") + chPct.toFixed(2) + '%</span></div>' +
+      '</div>';
+  }
+  box.innerHTML = html || '<div class="empty">You own every ticker in the market. 🏆</div>';
+  bindRows(box);
+}
+
+function bindRows(box) {
+  box.querySelectorAll(".row").forEach(r => {
+    r.addEventListener("click", () => openTrade(r.dataset.t));
+  });
+}
+
+/* ---------------- Chart ---------------- */
+let currentTF = "1Y";
+function renderChart() {
+  const hist = S.valueHistory.length ? S.valueHistory : [totalValue()];
+  // include today's live value as the last point
+  const series = hist.slice();
+  const startVal = totalValue(0) || 10000;
+  // build a full series that always starts at day 0
+  let data = [round2(10000)].concat(series);
+  // window by timeframe
+  const spans = { "1D": 2, "1W": 8, "1M": 31, "1Y": 366, "ALL": Infinity };
+  const span = spans[currentTF];
+  if (data.length > span) data = data.slice(data.length - span);
+
+  const W = 700, H = 200, pad = 6;
+  let min = Math.min(...data), max = Math.max(...data);
+  if (min === max) { min -= 1; max += 1; }
+  const rng = max - min;
+  const n = data.length;
+  const x = i => n === 1 ? W / 2 : (i / (n - 1)) * W;
+  const y = v => H - pad - ((v - min) / rng) * (H - pad * 2);
+
+  let d = "";
+  for (let i = 0; i < n; i++) d += (i === 0 ? "M" : "L") + x(i).toFixed(1) + " " + y(data[i]).toFixed(1) + " ";
+  const up = data[n - 1] >= data[0];
+  const line = document.getElementById("chartLine");
+  const fill = document.getElementById("chartFill");
+  line.setAttribute("d", d.trim());
+  line.classList.toggle("down", !up);
+  fill.setAttribute("d", d.trim() + "L" + x(n - 1).toFixed(1) + " " + H + " L" + x(0).toFixed(1) + " " + H + " Z");
+  fill.setAttribute("fill", up ? "url(#fillGrad)" : "url(#fillGradDown)");
+  fill.setAttribute("stroke", "none");
+
+  const first = data[0], last = data[n - 1];
+  const chg = last - first;
+  const pct = first ? (chg / first) * 100 : 0;
+  const tip = document.getElementById("chartTip");
+  tip.innerHTML = currentTF + " · <span style='color:" + (chg >= 0 ? "var(--green)" : "var(--red)") + "'>" +
+    (chg >= 0 ? "+" : "") + CAD(chg) + " (" + (chg >= 0 ? "+" : "") + pct.toFixed(2) + "%)</span>";
+}
+
+/* ---------------- Trade / cash modals ---------------- */
+const scrim = document.getElementById("scrim");
+const modalEl = document.getElementById("modal");
+
+function closeModal() { scrim.classList.remove("open"); }
+scrim.addEventListener("click", e => { if (e.target === scrim) closeModal(); });
+
+function openTrade(t) {
+  const u = UMAP[t];
+  const h = S.holdings[t];
+  const px = price(t);
+  let side = "buy";
+  let mode = "shares"; // 'shares' | 'dollars'
+
+  function draw() {
+    const owned = h ? h.shares : 0;
+    modalEl.innerHTML =
+      '<div class="m-head">' + avatarEl(u) +
+        '<div class="id"><div class="tkr">' + u.t + '</div><div class="co">' + u.n + ' · ' + u.s + '</div></div>' +
+        '<div class="m-px"><div class="p">' + CAD(px) + '</div><div class="co" style="text-align:right">' +
+          (owned > 0 ? "You own " + fmtShares(owned) : "Not held") + '</div></div>' +
+      '</div>' +
+      '<div class="seg">' +
+        '<button data-side="buy" class="' + (side === "buy" ? "on" : "") + '">Buy</button>' +
+        '<button data-side="sell" class="' + (side === "sell" ? "on sell" : "") + '">Sell</button>' +
+      '</div>' +
+      '<div class="modetoggle">' +
+        '<button data-mode="shares" class="' + (mode === "shares" ? "on" : "") + '">Shares</button>' +
+        '<button data-mode="dollars" class="' + (mode === "dollars" ? "on" : "") + '">Dollar amount</button>' +
+      '</div>' +
+      '<div class="field"><label>' + (mode === "shares" ? "Number of shares" : "Amount (CAD)") + '</label>' +
+        '<div class="inputwrap">' + (mode === "dollars" ? '<span class="pre">$</span>' : '') +
+        '<input id="amt" type="number" min="0" step="' + (mode === "shares" ? "0.0001" : "1") + '" placeholder="0" inputmode="decimal"></div></div>' +
+      '<div class="quicks" id="quicks"></div>' +
+      '<div class="summ" id="summ"></div>' +
+      '<div class="m-actions">' +
+        '<button class="btn btn-ghost" id="cancel">Cancel</button>' +
+        '<button class="btn btn-primary" id="confirm">' + (side === "buy" ? "Buy " + u.t : "Sell " + u.t) + '</button>' +
+      '</div>';
+
+    const amt = modalEl.querySelector("#amt");
+    const quicks = modalEl.querySelector("#quicks");
+    // quick buttons
+    if (side === "buy") {
+      const opts = mode === "dollars"
+        ? [["$500", 500], ["$1k", 1000], ["Max", Math.floor(S.cash)]]
+        : [["1", 1], ["5", 5], ["Max", null]];
+      quicks.innerHTML = opts.map((o, i) => '<button data-qi="' + i + '">' + o[0] + '</button>').join("");
+      quicks.querySelectorAll("button").forEach((b, i) => b.addEventListener("click", () => {
+        let v = opts[i][1];
+        if (v === null) v = Math.floor((S.cash / px) * 1e4) / 1e4; // max shares
+        amt.value = v; updateSumm();
+      }));
+    } else {
+      const opts = mode === "dollars"
+        ? [["25%", .25], ["50%", .5], ["100%", 1]]
+        : [["25%", .25], ["50%", .5], ["All", 1]];
+      quicks.innerHTML = opts.map((o, i) => '<button data-qi="' + i + '">' + o[0] + '</button>').join("");
+      quicks.querySelectorAll("button").forEach((b, i) => b.addEventListener("click", () => {
+        const frac = opts[i][1];
+        if (mode === "dollars") amt.value = Math.floor(owned * px * frac);
+        else amt.value = Math.round(owned * frac * 1e4) / 1e4;
+        updateSumm();
+      }));
+    }
+
+    function parsed() {
+      const raw = parseFloat(amt.value) || 0;
+      const shares = mode === "shares" ? raw : (px ? raw / px : 0);
+      return { raw, shares };
+    }
+    function updateSumm() {
+      const { shares } = parsed();
+      const est = shares * px;
+      const summ = modalEl.querySelector("#summ");
+      const cashAfter = side === "buy" ? S.cash - est : S.cash + est;
+      summ.innerHTML =
+        '<div class="l"><span>Est. shares</span><b>' + fmtShares(shares) + '</b></div>' +
+        '<div class="l"><span>Est. ' + (side === "buy" ? "cost" : "proceeds") + '</span><b>' + CAD(est) + '</b></div>' +
+        '<div class="l"><span>Cash after</span><b>' + CAD(cashAfter) + '</b></div>';
+      const conf = modalEl.querySelector("#confirm");
+      if (side === "buy") conf.disabled = shares <= 0 || est > S.cash + 1e-6;
+      else conf.disabled = shares <= 0 || shares > owned + 1e-9;
+    }
+
+    amt.addEventListener("input", updateSumm);
+    updateSumm();
+    setTimeout(() => amt.focus(), 60);
+
+    modalEl.querySelectorAll("[data-side]").forEach(b => b.addEventListener("click", () => { side = b.dataset.side; draw(); }));
+    modalEl.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => { mode = b.dataset.mode; draw(); }));
+    modalEl.querySelector("#cancel").addEventListener("click", closeModal);
+    modalEl.querySelector("#confirm").addEventListener("click", () => {
+      const { shares } = parsed();
+      const res = side === "buy" ? buy(t, shares) : sell(t, shares);
+      if (res.ok) { closeModal(); toast(res.msg); render(); }
+      else toast(res.msg, true);
+    });
+    amt.addEventListener("keydown", e => { if (e.key === "Enter") modalEl.querySelector("#confirm").click(); });
+  }
+  draw();
+  scrim.classList.add("open");
+}
+
+function openCash(kind) {
+  const isDep = kind === "deposit";
+  modalEl.innerHTML =
+    '<div class="m-head">' +
+      '<div class="avatar" style="background:' + (isDep ? "var(--pink)" : "var(--ink)") + '">' + (isDep ? "＋" : "↓") + '</div>' +
+      '<div class="id"><div class="tkr">' + (isDep ? "Deposit cash" : "Withdraw cash") + '</div>' +
+        '<div class="co">' + (isDep ? "Uses contribution room" : "Restores room next Jan 1") + '</div></div>' +
+    '</div>' +
+    '<div class="field"><label>Amount (CAD)</label>' +
+      '<div class="inputwrap"><span class="pre">$</span><input id="camt" type="number" min="0" step="100" placeholder="0" inputmode="decimal"></div></div>' +
+    '<div class="summ" id="csumm"></div>' +
+    '<div class="warn" id="cwarn"></div>' +
+    '<div class="m-actions">' +
+      '<button class="btn btn-ghost" id="ccancel">Cancel</button>' +
+      '<button class="btn btn-primary" id="cconfirm">' + (isDep ? "Deposit" : "Withdraw") + '</button>' +
+    '</div>';
+  const camt = modalEl.querySelector("#camt");
+  const warn = modalEl.querySelector("#cwarn");
+  const conf = modalEl.querySelector("#cconfirm");
+  function upd() {
+    const v = parseFloat(camt.value) || 0;
+    const summ = modalEl.querySelector("#csumm");
+    if (isDep) {
+      const roomAfter = S.room - v;
+      summ.innerHTML =
+        '<div class="l"><span>Cash after</span><b>' + CAD(S.cash + v) + '</b></div>' +
+        '<div class="l"><span>Room remaining</span><b>' + CAD(Math.max(0, roomAfter)) + '</b></div>';
+      if (v > S.room + 1e-6) {
+        const excess = v - S.room;
+        const penalty = excess * 0.01;
+        warn.classList.add("show");
+        warn.innerHTML = '⚠️ <b>Over-contribution blocked.</b> This exceeds your room by ' + CAD(excess) +
+          '. The CRA charges <b>1% per month</b> on the excess — that would be about ' + CAD(penalty) +
+          '/month (' + CAD(penalty * 12) + '/yr). Deposit blocked to keep you safe.';
+        conf.disabled = true;
+      } else { warn.classList.remove("show"); conf.disabled = v <= 0; }
+    } else {
+      const yr = simDate(S.day).getFullYear();
+      summ.innerHTML =
+        '<div class="l"><span>Cash after</span><b>' + CAD(S.cash - v) + '</b></div>' +
+        '<div class="l"><span>Room restored on</span><b>Jan 1, ' + (yr + 1) + '</b></div>';
+      if (v > S.cash + 1e-6) { warn.classList.add("show"); warn.innerHTML = '⚠️ Not enough cash available.'; conf.disabled = true; }
+      else { warn.classList.remove("show"); conf.disabled = v <= 0; }
+    }
+  }
+  camt.addEventListener("input", upd); upd();
+  setTimeout(() => camt.focus(), 60);
+  modalEl.querySelector("#ccancel").addEventListener("click", closeModal);
+  conf.addEventListener("click", () => {
+    const v = parseFloat(camt.value) || 0;
+    const res = isDep ? deposit(v) : withdraw(v);
+    if (res.ok) { closeModal(); toast(res.msg); render(); }
+    else toast(res.msg, true);
+  });
+  camt.addEventListener("keydown", e => { if (e.key === "Enter") conf.click(); });
+  scrim.classList.add("open");
+}
+
+/* ---------------- Toast ---------------- */
+let toastTimer;
+function toast(msg, err) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "toast show" + (err ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+/* ---------------- Wiring ---------------- */
+document.querySelectorAll(".tf").forEach(el => el.addEventListener("click", () => {
+  document.querySelectorAll(".tf").forEach(x => x.classList.remove("active"));
+  el.classList.add("active");
+  currentTF = el.dataset.tf;
+  renderChart();
+}));
+document.querySelectorAll("[data-adv]").forEach(b => b.addEventListener("click", () => advance(parseInt(b.dataset.adv, 10))));
+document.getElementById("depositBtn").addEventListener("click", () => openCash("deposit"));
+document.getElementById("withdrawBtn").addEventListener("click", () => openCash("withdraw"));
+document.getElementById("resetLink").addEventListener("click", () => {
+  if (confirm("Reset the simulation? All progress will be cleared.")) {
+    localStorage.removeItem(LS_KEY);
+    for (const k in priceCache) delete priceCache[k];
+    displayed = {};
+    S = freshState();
+    save(); render();
+    toast("Simulation reset");
+  }
+});
+
+// Auto-advance play button
+let playing = null;
+document.getElementById("playBtn").addEventListener("click", () => {
+  const btn = document.getElementById("playBtn");
+  if (playing) { clearInterval(playing); playing = null; btn.textContent = "▶"; btn.classList.remove("on"); }
+  else { playing = setInterval(() => advance(1), 700); btn.textContent = "⏸"; btn.classList.add("on"); }
+});
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.key === "Escape") closeModal();
+});
+
+/* ---------------- Boot ---------------- */
+load();
+if (S.valueHistory.length === 0) S.valueHistory.push(round2(totalValue()));
+render();
+</script>
