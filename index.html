@@ -118,6 +118,40 @@
   .acct .as { font-size: 13px; color: var(--txt-faint); margin-top: 3px; }
   .acct .av { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
+  /* ---------- Portfolio / Activity views ---------- */
+  .view-title { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin: 4px 0 4px; }
+  .view-sub { color: var(--txt-dim); font-size: 14px; margin: 0 0 22px; }
+  .pcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 16px; }
+  .pstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+  .pstat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .pstat .k { font-size: 12.5px; color: var(--txt-dim); margin-bottom: 6px; }
+  .pstat .v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .alloc-row { padding: 14px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .alloc-row:last-child { border-bottom: none; }
+  .alloc-top { display: flex; align-items: center; gap: 12px; }
+  .alloc-top .hid { flex: 1; min-width: 0; }
+  .alloc-top .ht { font-size: 14px; font-weight: 600; }
+  .alloc-top .hc { font-size: 12px; color: var(--txt-faint); }
+  .alloc-top .hv { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .alloc-top .hp { font-size: 12px; color: var(--txt-dim); font-variant-numeric: tabular-nums; text-align: right; }
+  .bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 10px; }
+  .bar > span { display: block; height: 100%; border-radius: 999px; transition: width .4s ease; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip { background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; font-size: 12.5px; color: var(--txt-dim); font-variant-numeric: tabular-nums; }
+  .chip b { color: var(--txt); font-weight: 600; }
+  .act-row { display: flex; align-items: center; gap: 14px; padding: 14px 4px; border-bottom: 1px solid var(--line); }
+  .act-ic { width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto; display: grid; place-items: center; font-size: 17px; background: var(--surface-2); }
+  .act-main { flex: 1; min-width: 0; }
+  .act-t { font-size: 14px; font-weight: 600; }
+  .act-d { font-size: 12px; color: var(--txt-faint); margin-top: 2px; }
+  .act-amt { font-weight: 600; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .act-amt.up { color: var(--up); }
+  .act-amt.down { color: var(--down); }
+  .searchbox { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 13px; padding: 0 14px; margin-bottom: 12px; }
+  .searchbox svg { width: 18px; height: 18px; color: var(--txt-faint); }
+  .searchbox input { flex: 1; border: none; background: transparent; padding: 13px 4px; font-size: 15px; font-family: inherit; color: var(--txt); outline: none; }
+  .searchlist { max-height: 340px; overflow-y: auto; }
+
   /* ---------- Right column ---------- */
   .side { display: flex; flex-direction: column; gap: 16px; }
   .carousel-head { display: flex; align-items: center; justify-content: space-between; }
@@ -243,22 +277,19 @@
   <div class="logo" title="TFSA Simulator">
     <svg viewBox="0 0 32 32" fill="none"><path d="M4 7l4.2 18h4L16 12l3.8 13h4L28 7h-4l-2.6 12.6L18 7h-4l-3.4 12.6L8 7H4z" fill="#f4f4f5"/></svg>
   </div>
-  <div class="ic active" title="Home">
+  <div class="ic active" data-view="home" title="Home">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
   </div>
-  <div class="ic" title="Search">
+  <div class="ic" data-act="search" title="Search & trade">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
   </div>
-  <div class="ic" title="Portfolio">
+  <div class="ic" data-view="portfolio" title="Portfolio">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
   </div>
-  <div class="ic" title="Cards">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>
-  </div>
-  <div class="ic" title="Move money">
+  <div class="ic" data-act="move" title="Move money">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>
   </div>
-  <div class="ic" title="Activity">
+  <div class="ic" data-view="activity" title="Activity">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
   </div>
   <div class="spacer"></div>
@@ -292,6 +323,7 @@
   <div class="grid">
     <!-- main -->
     <div class="col-main">
+     <div id="viewHome">
       <div class="value-lg">
         <span id="total">$0</span>
         <span class="eye" id="eyeBtn" title="Hide / show balance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>
@@ -338,6 +370,10 @@
         </button>
       </div>
       <div class="acct-list" id="accts"></div>
+     </div><!-- /viewHome -->
+
+     <div id="viewPortfolio" style="display:none"></div>
+     <div id="viewActivity" style="display:none"></div>
     </div>
 
     <!-- right -->
@@ -456,18 +492,22 @@ for (const u of UNIVERSE) {
 /* ---------------- State ---------------- */
 const LS_KEY = "tfsa_sim_v2";
 let S = null;
-let ui = { hidden: false, mode: "value", tf: "1M", tab: "holdings", car: 0 };
+let ui = { hidden: false, mode: "value", tf: "1M", tab: "holdings", car: 0, view: "home" };
 
 function freshState() {
   return {
     seed: (Math.random() * 1e9) | 0,
     day: 0, cash: 10000, room: 10000, holdings: {},
-    dividendsTotal: 0, contributed: 10000, withdrawnByYear: {}, valueHistory: [],
+    dividendsTotal: 0, contributed: 10000, withdrawnByYear: {}, valueHistory: [], activity: [],
   };
 }
 function load() {
-  try { const raw = localStorage.getItem(LS_KEY); if (raw) { S = JSON.parse(raw); return; } } catch (e) {}
+  try { const raw = localStorage.getItem(LS_KEY); if (raw) { S = JSON.parse(raw); S.activity = S.activity || []; return; } } catch (e) {}
   S = freshState();
+}
+function logAct(type, text, amount) {
+  S.activity.push({ day: S.day, iso: simDate(S.day).toISOString(), type, text, amount });
+  if (S.activity.length > 600) S.activity.shift();
 }
 function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {} }
 
@@ -539,12 +579,12 @@ function advance(days) {
         const u = UMAP[t];
         if (u.dy > 0) { const div = S.holdings[t].shares * price(t) * (u.dy / 4); S.cash += div; S.dividendsTotal += div; paid += div; }
       }
-      if (paid > 0.005) toast("Dividends paid: " + CAD(paid));
+      if (paid > 0.005) { logAct("dividend", "Dividends received", paid); toast("Dividends paid: " + CAD(paid)); }
     }
     if (afterDate.getFullYear() !== beforeDate.getFullYear()) {
       const endedYear = beforeDate.getFullYear();
       const restore = S.withdrawnByYear[endedYear] || 0;
-      if (restore > 0) { S.room += restore; delete S.withdrawnByYear[endedYear]; toast("Jan 1 " + afterDate.getFullYear() + ": " + CAD0(restore) + " room restored"); }
+      if (restore > 0) { S.room += restore; delete S.withdrawnByYear[endedYear]; logAct("room", "Contribution room restored", 0); toast("Jan 1 " + afterDate.getFullYear() + ": " + CAD0(restore) + " room restored"); }
     }
     S.valueHistory.push(round2(totalValue()));
   }
@@ -558,7 +598,8 @@ function buy(t, shares) {
   if (cost > S.cash + 1e-6) return { ok: false, msg: "Not enough cash" };
   S.cash -= cost;
   const h = S.holdings[t] || { shares: 0, costBasis: 0 };
-  h.costBasis += cost; h.shares += shares; S.holdings[t] = h; save();
+  h.costBasis += cost; h.shares += shares; S.holdings[t] = h;
+  logAct("buy", "Bought " + fmtShares(shares) + " " + t, -cost); save();
   return { ok: true, msg: "Bought " + fmtShares(shares) + " " + t };
 }
 function sell(t, shares) {
@@ -567,7 +608,8 @@ function sell(t, shares) {
   if (shares > h.shares + 1e-9) return { ok: false, msg: "You only own " + fmtShares(h.shares) + " shares" };
   const proceeds = shares * price(t), frac = shares / h.shares;
   h.costBasis -= h.costBasis * frac; h.shares -= shares; S.cash += proceeds;
-  if (h.shares <= 1e-9) delete S.holdings[t]; save();
+  if (h.shares <= 1e-9) delete S.holdings[t];
+  logAct("sell", "Sold " + fmtShares(shares) + " " + t, proceeds); save();
   return { ok: true, msg: "Sold " + fmtShares(shares) + " " + t + " for " + CAD(proceeds) };
 }
 function fmtShares(x) { return (Math.round(x * 1e4) / 1e4).toLocaleString("en-CA", { maximumFractionDigits: 4 }); }
@@ -575,7 +617,8 @@ function fmtShares(x) { return (Math.round(x * 1e4) / 1e4).toLocaleString("en-CA
 /* ---------------- Cash (unlimited, fee-free) ---------------- */
 function deposit(amount) {
   if (amount <= 0) return { ok: false, msg: "Enter a valid amount" };
-  S.cash += amount; S.room -= amount; S.contributed += amount; save();
+  S.cash += amount; S.room -= amount; S.contributed += amount;
+  logAct("deposit", "Deposit", amount); save();
   return { ok: true, msg: "Deposited " + CAD(amount) };
 }
 function withdraw(amount) {
@@ -583,7 +626,8 @@ function withdraw(amount) {
   if (amount > S.cash + 1e-6) return { ok: false, msg: "Not enough cash to withdraw" };
   S.cash -= amount;
   const yr = simDate(S.day).getFullYear();
-  S.withdrawnByYear[yr] = (S.withdrawnByYear[yr] || 0) + amount; save();
+  S.withdrawnByYear[yr] = (S.withdrawnByYear[yr] || 0) + amount;
+  logAct("withdraw", "Withdrawal", -amount); save();
   return { ok: true, msg: "Withdrew " + CAD(amount) + " — room restored next Jan 1" };
 }
 
@@ -634,7 +678,86 @@ function render() {
   renderAccounts();
   renderPanel();
   renderPromo();
+  renderPortfolio();
+  renderActivity();
   save();
+}
+
+function setView(v) {
+  ui.view = v;
+  document.querySelectorAll(".rail .ic").forEach(ic => ic.classList.toggle("active", ic.dataset.view === v));
+  document.getElementById("viewHome").style.display = v === "home" ? "" : "none";
+  document.getElementById("viewPortfolio").style.display = v === "portfolio" ? "" : "none";
+  document.getElementById("viewActivity").style.display = v === "activity" ? "" : "none";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  render();
+}
+
+function renderPortfolio() {
+  const box = document.getElementById("viewPortfolio");
+  const tv = totalValue(), hv = holdingsValue();
+  const ts = Object.keys(S.holdings);
+  let html = '<div class="view-title">Portfolio</div><div class="view-sub">Your positions, weightings and sector mix</div>';
+  html += '<div class="pstats">' +
+    '<div class="pstat"><div class="k">Invested</div><div class="v">' + (ui.hidden ? dots : CAD(hv)) + '</div></div>' +
+    '<div class="pstat"><div class="k">Cash</div><div class="v">' + (ui.hidden ? dots : CAD(S.cash)) + '</div></div>' +
+    '<div class="pstat"><div class="k">Positions</div><div class="v">' + ts.length + '</div></div></div>';
+  if (!ts.length) {
+    html += '<div class="pcard" style="text-align:center;color:var(--txt-faint)">No positions yet. ' +
+      'Use Search (🔍 in the sidebar) or the Watchlist to buy your first stock.</div>';
+    box.innerHTML = html; return;
+  }
+  ts.sort((a, b) => S.holdings[b].shares * price(b) - S.holdings[a].shares * price(a));
+  // allocation rows (weight of each position across the whole account incl. cash)
+  html += '<div class="pcard">';
+  for (const t of ts) {
+    const u = UMAP[t], h = S.holdings[t], val = h.shares * price(t);
+    const w = tv ? (val / tv) * 100 : 0;
+    const cost = h.costBasis, gain = val - cost, gpct = cost ? (gain / cost) * 100 : 0, up = gain >= 0;
+    html += '<div class="alloc-row" data-t="' + t + '"><div class="alloc-top">' + avatar(u) +
+      '<div class="hid"><div class="ht">' + t + '</div><div class="hc">' + fmtShares(h.shares) + ' sh · ' +
+        (up ? "+" : "") + gpct.toFixed(1) + '% total</div></div>' +
+      '<div><div class="hv">' + (ui.hidden ? dots : CAD(val)) + '</div><div class="hp">' + w.toFixed(1) + '%</div></div></div>' +
+      '<div class="bar"><span style="width:' + Math.max(2, w).toFixed(1) + '%;background:' + u.c + '"></span></div></div>';
+  }
+  html += '</div>';
+  // sector mix
+  const bySec = {};
+  for (const t of ts) { const u = UMAP[t]; bySec[u.s] = (bySec[u.s] || 0) + S.holdings[t].shares * price(t); }
+  const secs = Object.keys(bySec).sort((a, b) => bySec[b] - bySec[a]);
+  html += '<div class="pcard"><div class="ht" style="font-weight:600;margin-bottom:6px">Sector mix</div><div class="chips">' +
+    secs.map(s => '<div class="chip">' + s + ' <b>' + (hv ? (bySec[s] / hv * 100).toFixed(0) : 0) + '%</b></div>').join("") +
+    '</div></div>';
+  box.innerHTML = html;
+  box.querySelectorAll(".alloc-row").forEach(r => r.addEventListener("click", () => openTrade(r.dataset.t)));
+}
+
+const ACT_META = {
+  buy: { ic: "↗", bg: "rgba(120,120,255,.16)" },
+  sell: { ic: "↘", bg: "rgba(255,150,90,.16)" },
+  deposit: { ic: "＋", bg: "var(--up-soft)" },
+  withdraw: { ic: "↓", bg: "var(--down-soft)" },
+  dividend: { ic: "💰", bg: "rgba(231,181,69,.16)" },
+  room: { ic: "🏦", bg: "var(--surface-2)" },
+};
+function renderActivity() {
+  const box = document.getElementById("viewActivity");
+  let html = '<div class="view-title">Activity</div><div class="view-sub">Every trade, deposit, withdrawal and dividend</div>';
+  if (!S.activity.length) {
+    html += '<div class="pcard" style="text-align:center;color:var(--txt-faint)">No activity yet — make a trade or a deposit.</div>';
+    box.innerHTML = html; return;
+  }
+  html += '<div class="pcard" style="padding:6px 20px">';
+  for (let i = S.activity.length - 1; i >= 0; i--) {
+    const a = S.activity[i], m = ACT_META[a.type] || ACT_META.room;
+    const d = new Date(a.iso);
+    const amt = a.amount ? '<div class="act-amt ' + (a.amount >= 0 ? "up" : "down") + '">' +
+      (a.amount >= 0 ? "+" : "-") + CAD(Math.abs(a.amount)).replace("-", "") + '</div>' : '';
+    html += '<div class="act-row"><div class="act-ic" style="background:' + m.bg + '">' + m.ic + '</div>' +
+      '<div class="act-main"><div class="act-t">' + a.text + '</div><div class="act-d">' + fmtDate(d) + '</div></div>' + amt + '</div>';
+  }
+  html += '</div>';
+  box.innerHTML = html;
 }
 
 function renderAccounts() {
@@ -647,7 +770,7 @@ function renderAccounts() {
       Object.keys(S.holdings).length + ' holdings</div></div><div class="av">' + invested + '</div></div>' +
     '<div class="acct" id="acctCash"><div><div class="an">Cash</div><div class="as">Available to invest</div></div>' +
       '<div class="av">' + cashv + '</div></div>';
-  document.getElementById("acctCash").addEventListener("click", () => openMenu());
+  document.getElementById("acctCash").addEventListener("click", e => openMenu(e));
   document.getElementById("acctTfsa").addEventListener("click", () => { ui.tab = "holdings"; syncTabs(); renderPanel(); document.querySelector(".panel").scrollIntoView({ behavior: "smooth", block: "center" }); });
 }
 
@@ -870,6 +993,32 @@ function openCash(kind) {
   scrim.classList.add("open");
 }
 
+/* ---------------- Search & trade ---------------- */
+function openSearch() {
+  modalEl.innerHTML =
+    '<div class="searchbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+    '<input id="sq" placeholder="Search ticker or company…" autocomplete="off"></div>' +
+    '<div class="searchlist" id="slist"></div>';
+  const sq = modalEl.querySelector("#sq"), slist = modalEl.querySelector("#slist");
+  function draw(q) {
+    q = (q || "").trim().toLowerCase();
+    const rows = UNIVERSE.filter(u => !q || u.t.toLowerCase().includes(q) || u.n.toLowerCase().includes(q));
+    slist.innerHTML = rows.length ? rows.map(u => {
+      const px = price(u.t), pv = prevPrice(u.t), ch = pv ? ((px - pv) / pv) * 100 : 0, up = ch >= 0;
+      const owned = S.holdings[u.t];
+      return '<div class="hrow" data-t="' + u.t + '">' + avatar(u) +
+        '<div class="hid"><div class="ht">' + u.t + (owned ? ' · owned' : '') + '</div><div class="hc">' + u.n + '</div></div>' +
+        '<div class="hnum"><div class="hv">' + CAD(px) + '</div><div class="hg ' + (up ? "up" : "down") + '">' +
+        (up ? "+" : "") + ch.toFixed(2) + '%</div></div></div>';
+    }).join("") : '<div class="panel-empty">No matches for “' + q + '”.</div>';
+    slist.querySelectorAll(".hrow").forEach(r => r.addEventListener("click", () => { closeModal(); openTrade(r.dataset.t); }));
+  }
+  draw("");
+  sq.addEventListener("input", () => draw(sq.value));
+  setTimeout(() => sq.focus(), 60);
+  scrim.classList.add("open");
+}
+
 /* ---------------- Toast ---------------- */
 let toastTimer;
 function toast(msg, err) {
@@ -880,7 +1029,7 @@ function toast(msg, err) {
 
 /* ---------------- Move-money menu ---------------- */
 const moveMenu = document.getElementById("moveMenu");
-function openMenu() { moveMenu.classList.add("open"); }
+function openMenu(e) { if (e) e.stopPropagation(); moveMenu.classList.add("open"); }
 document.getElementById("moveBtn").addEventListener("click", e => { e.stopPropagation(); moveMenu.classList.toggle("open"); });
 document.addEventListener("click", () => moveMenu.classList.remove("open"));
 moveMenu.addEventListener("click", e => e.stopPropagation());
@@ -916,7 +1065,12 @@ document.querySelectorAll(".tab").forEach(el => el.addEventListener("click", () 
 document.getElementById("carPrev").addEventListener("click", () => { ui.car--; renderPromo(); });
 document.getElementById("carNext").addEventListener("click", () => { ui.car++; renderPromo(); });
 document.getElementById("docrow").addEventListener("click", () => toast("TFSA gains are tax-free — no tax slips needed. 🎉"));
-document.getElementById("meBtn").addEventListener("click", () => openMenu());
+document.getElementById("meBtn").addEventListener("click", e => openMenu(e));
+document.querySelectorAll(".rail .ic").forEach(ic => ic.addEventListener("click", e => {
+  if (ic.dataset.view) setView(ic.dataset.view);
+  else if (ic.dataset.act === "search") openSearch();
+  else if (ic.dataset.act === "move") openMenu(e);
+}));
 document.querySelectorAll("[data-adv]").forEach(b => b.addEventListener("click", () => advance(parseInt(b.dataset.adv, 10))));
 
 let playing = null;
